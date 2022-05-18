@@ -202,7 +202,31 @@ public class GoogleCloudDataProvider extends AbstractJSONDataProvider
 	public ImagePlus loadImage( final String link ) throws IOException
 	{
 		if ( link.endsWith( ".tif" ) || link.endsWith( ".tiff" ) )
-			return ImageImporter.openImage( link );
+		{
+			if (link.startsWith("gs://"))
+			{
+				Path tempPath = null;
+				ImagePlus imp = null;
+				try
+				{
+					tempPath = Files.createTempFile( null, ".tif");
+					final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI( link );
+					final Blob blob = storage.get( BlobId.of( googleCloudUri.getBucket(), googleCloudUri.getKey() ) );
+					blob.downloadTo(tempPath);
+					imp = ImageImporter.openImage(tempPath.toString());
+				}
+				finally
+				{
+					if ( tempPath != null )
+						tempPath.toFile().delete();
+				}
+				return imp;
+			}
+			else
+			{
+				return ImageImporter.openImage( link );
+			}
+		}
 		throw new NotImplementedException( "Only TIFF images are supported at the moment" );
 	}
 
